@@ -11,7 +11,7 @@
 
 import requests
 
-url = "https://insight.streetlightdata.com/api/v2/debug/echo?key=0PquI2MHeFd17nWNwxBSf1oj4LnhozdU"
+url = "https://insight.streetlightdata.com/api/v2/debug/echo?key=YOUR API KEY"
 
 payload = { "message": "hello worlddddd" }
 headers = {
