@@ -1,82 +1,84 @@
-# StreetLight-API 
-Python tools for automating StreetLight Data API AADT analysis using OSM segment IDs. Create zone sets, submit analyses, monitor status, and download AADT results (CSV/shapefile). Includes full example scripts and workflow documentation.
+# StreetLight Data API – Automated AADT Analysis Using OSM IDs
 
-# StreetLight Data API – Automated AADT Analysis and Results Download
+Automate StreetLight Data’s API workflow to extract **Annual Average Daily Traffic (AADT)** for custom OpenStreetMap (OSM) road segments.
 
-Automate the extraction of Annual Average Daily Traffic (AADT) metrics from the StreetLight Data API for custom OSM street segments.  
-This repo contains Python scripts and workflow documentation for:
+This repository provides robust Python scripts, clear documentation, and best practices for:
 
-- Creating zone sets from OpenStreetMap (OSM) line segment IDs
-- Submitting AADT analyses and monitoring status
-- Checking available result metrics
-- Downloading results in CSV or shapefile format to a local directory
-
----
-
-## 🚦 Features
-
-- **Zone Set Creation:** Group your OSM segments for analysis
-- **AADT Analysis Submission:** Automate configuration and launch of AADT runs
-- **Status Monitoring:** Poll API for completion and available result types
-- **Automated Results Download:** Get your data as CSV or shapefile, in a folder of your choice
-- **Ready-to-use Python Scripts:** Modular and documented for easy adaptation
+- Building custom zone sets from OSM segment IDs
+- Submitting and tracking AADT analyses
+- Handling API status and download endpoints
+- Downloading results as CSV/shapefile and organizing outputs
+- Troubleshooting the full process
 
 ---
 
-## 📦 Requirements
+## 🚗 Background & Motivation
 
-- Python 3.x  
-- [`requests`](https://pypi.org/project/requests/) library  
-- StreetLight API Key and login email  
-- List of OSM segment IDs (as integers)
+StreetLight Data offers advanced mobility analytics, but its API is multi-step and requires careful sequencing.  
+This project was built through hands-on problem solving with the following challenges:
 
----
-
-## ⚡️ Quick Start
-
-1. **Clone the repository**
-    ```bash
-    git clone https://github.com/yourusername/your-repo-name.git
-    cd your-repo-name
-    ```
-2. **Install dependencies**
-    ```bash
-    pip install requests
-    ```
-3. **Edit the example scripts**
-    - Add your StreetLight API Key, email, and OSM IDs where indicated.
-
-4. **Run the scripts**
-    - Follow the prompts to save output files.
-    - Open downloaded CSVs or shapefiles in your preferred tool.
+- **Challenge:** The API process is multi-step, with dependencies at each stage.
+  - **Solution:** Scripts are organized to follow the API logic (zone set creation → analysis submission → status polling → results download).
+- **Challenge:** OSM IDs must be correctly sourced, deduplicated, and managed.
+  - **Solution:** This README explains how to obtain and manage OSM IDs, and the scripts handle input lists or batches.
+- **Challenge:** Results (metrics) are only available after analysis completion, and metric names may differ.
+  - **Solution:** The status-checking script reveals available metrics before downloading, and the download code uses only verified metric names.
 
 ---
 
-## 📝 Example Usage
+## 🌍 Where Do OSM IDs Come From? How Do I Manage Them?
+
+**OpenStreetMap (OSM) segment IDs** uniquely identify road line features.
+
+**How to extract OSM IDs:**
+
+- **QGIS or ArcGIS:**  
+  - Import OSM line data (e.g., from [Geofabrik](https://download.geofabrik.de/)), select your area, and export the `osm_id` field from your selection.
+- **Overpass Turbo:**  
+  - Use [overpass-turbo.eu](https://overpass-turbo.eu/), run a line/way query, and export features. Extract OSM IDs from the GeoJSON or CSV output.
+- **Python OSM Libraries:**  
+  - Use [osmnx](https://osmnx.readthedocs.io/) or [osmapi](https://pypi.org/project/OsmApi/) to query and parse OSM data, then save the line segment IDs.
+
+**Tips:**
+- Always deduplicate your list and ensure you use only **line feature IDs** (not nodes or polygons).
+- Save OSM IDs as a Python list, CSV, or text file. For large projects, process in batches of ≤500 IDs per API request (the StreetLight API limit).
+
+---
+
+## 🛠️ Workflow Summary
+
+1. **Create a Zone Set:**  
+   Submit your OSM IDs to StreetLight; receive a `zone_set_uuid`.
+
+2. **Submit an AADT Analysis:**  
+   Reference your zone set, select year, travel mode, and parameters.
+
+3. **Poll for Analysis Status:**  
+   Wait for job status to be “Available” (or “completed”).
+
+4. **Check Available Metrics:**  
+   Each analysis may expose unique metrics (`aadt`, `estimated_aadt`, etc.).
+
+5. **Download Results:**  
+   Download CSV (tabular) and/or shapefile (GIS) results.
+
+---
+
+## 🐍 Example Usage
+
+### 1. Create a Zone Set from OSM IDs
 
 ```python
 import requests
 
 API_KEY = "YOUR_API_KEY"
-ANALYSIS_UUID = "your_analysis_uuid"
-METRIC = "estimated_aadt"
-save_dir = input("Enter folder path to save the CSV: ").strip()
-if not save_dir:
-    save_dir = "."
+INSIGHT_LOGIN_EMAIL = "your@email.com"
+osm_ids = [15373817, 15373820, 15373822]  # Your OSM line IDs
 
-download_url = (
-    f"https://insight.streetlightdata.com/api/v2/analyses/download/uuid/"
-    f"{ANALYSIS_UUID}/{METRIC}?key={API_KEY}"
-)
-headers = {"accept": "text/csv"}
-response = requests.get(download_url, headers=headers)
+zone_set_url = f"https://insight.streetlightdata.com/api/v2/zone_sets?key={API_KEY}"
+zone_set_payload = {"osm_ids": osm_ids, "insight_login_email": INSIGHT_LOGIN_EMAIL}
+headers = {"accept": "application/json", "content-type": "application/json"}
 
-if response.status_code == 200:
-    filename = f"{ANALYSIS_UUID}_{METRIC}.csv"
-    filepath = os.path.join(save_dir, filename)
-    with open(filepath, "w", encoding="utf-8") as f:
-        f.write(response.text)
-    print(f"Downloaded as {filepath}")
-else:
-    print(f"Failed to download CSV. Status: {response.status_code}")
-    print(response.text)
+response = requests.post(zone_set_url, json=zone_set_payload, headers=headers)
+zone_set_uuid = response.json()["uuid"]
+print("Zone Set UUID:", zone_set_uuid)
